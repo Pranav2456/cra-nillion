@@ -10,19 +10,32 @@ import ComputeForm from './nillion/components/ComputeForm';
 import ConnectionInfo from './nillion/components/ConnectionInfo';
 
 export default function Main() {
-  const programName = 'addition_simple';
-  const outputName = 'my_output';
-  const partyName = 'Party1';
+  const programName = 'voting';
+  const outputName = 'narendra_modi_votes';
+  const partyName = 'Official';
   const [userkey, setUserKey] = useState<string | null>(null);
   const [client, setClient] = useState<NillionClient | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [partyId, setPartyId] = useState<string | null>(null);
-  const [storeId_my_int1, setStoreId_my_int1] = useState<string | null>(null);
-  const [storeId_my_int2, setStoreId_my_int2] = useState<string | null>(null);
   const [programId, setProgramId] = useState<string | null>(null);
-  const [additionalComputeValues, setAdditionalComputeValues] =
-    useState<NadaValues | null>(null);
+  const [additionalComputeValues, setAdditionalComputeValues] = useState<NadaValues | null>(null);
+  const [voteStartCount, setVoteStartCount] = useState<string | null>(null);
+  const [votes, setVotes] = useState<{ [key: string]: string }>({});
+  const [results, setResults] = useState<{ [key: string]: number | null }>({
+    narendra_modi_votes: null,
+    rahul_gandhi_votes: null,
+    mamta_bannerjee_votes: null,
+  });
   const [computeResult, setComputeResult] = useState<string | null>(null);
+  const [winner,setWinner] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (Object.values(results).every(v => v !== null)) {
+      const maxVotes = Math.max(...Object.values(results));
+      const winner = Object.keys(results).find(key => results[key] === maxVotes);
+      setWinner(winner);
+    }
+  }, [results]);
 
   useEffect(() => {
     if (userkey && client) {
@@ -35,10 +48,10 @@ export default function Main() {
 
   return (
     <div>
-      <h1>Blind Computation Demo</h1>
+      <h1>Blind Voting Demo</h1>
       <p>
-        Connect to Nillion with a user key, then follow the steps to store a
-        program, store secrets, and compute on the secrets.
+        Connect to Nillion with a user key, then follow the steps to store the
+        voting program, store votes, and compute the results.
       </p>
       <ConnectionInfo client={client} userkey={userkey} />
 
@@ -58,56 +71,74 @@ export default function Main() {
         </>
       )}
       <br />
-      <h1>3. Store Secrets {storeId_my_int1 && storeId_my_int2 && ' ✅'}</h1>
+      <h1>3. Store Secrets {voteStartCount && Object.keys(votes).length === 8 && ' ✅'}</h1>
       {userId && programId && (
         <>
-          <h2>Store my_int1 {storeId_my_int1 && ' ✅'}</h2>
+          <h2>Store Vote Start Count {voteStartCount && ' ✅'}</h2>
           <StoreSecretForm
-            secretName={'my_int1'}
-            onNewStoredSecret={(secret) => setStoreId_my_int1(secret.storeId)}
+            secretName="vote_start_count"
+            onNewStoredSecret={(secret) => setVoteStartCount(secret.storeId)}
             nillionClient={client}
             secretType="SecretInteger"
             isLoading={false}
+            startCount={0}
             itemName=""
             hidePermissions
             defaultUserWithComputePermissions={userId}
             defaultProgramIdForComputePermissions={programId}
           />
-
-          <h2>Store my_int2 {storeId_my_int2 && ' ✅'}</h2>
-          <StoreSecretForm
-            secretName={'my_int2'}
-            onNewStoredSecret={(secret) => setStoreId_my_int2(secret.storeId)}
-            nillionClient={client}
-            secretType="SecretInteger"
-            isLoading={false}
-            itemName=""
-            hidePermissions
-            defaultUserWithComputePermissions={userId}
-            defaultProgramIdForComputePermissions={programId}
-          />
+          
+          {Array.from({length: 8}, (_, i) => (
+            <div key={i}>
+              <h2>Store Vote for Voter {i} {votes[`vote_${i}`] && ' ✅'}</h2>
+              <StoreSecretForm
+                secretName={`vote_${i}`}
+                onNewStoredSecret={(secret) => setVotes(prev => ({...prev, [`vote_${i}`]: secret.storeId}))}
+                nillionClient={client}
+                secretType="SecretInteger"
+                isLoading={false}
+                itemName=""
+                isVoter={true}
+                hidePermissions
+                defaultUserWithComputePermissions={userId}
+                defaultProgramIdForComputePermissions={programId}
+              />
+            </div>
+          ))}
         </>
       )}
-      <br />
-      <h1>4. Compute {computeResult && ' ✅'}</h1>
+      <h1>4. Compute {Object.values(results).every(v => v !== null) && ' ✅'}</h1>
       {client &&
         programId &&
-        storeId_my_int1 &&
-        storeId_my_int2 &&
+        voteStartCount &&
+        Object.keys(votes).length === 8 &&
         partyId &&
         additionalComputeValues && (
-          <ComputeForm
-            nillionClient={client}
-            programId={programId}
-            additionalComputeValues={additionalComputeValues}
-            storeIds={[storeId_my_int1, storeId_my_int2]}
-            inputParties={[{ partyName, partyId }]}
-            outputParties={[{ partyName, partyId }]}
-            outputName={outputName}
-            onComputeProgram={(result) => setComputeResult(result.value)}
-          />
-        )}
-      <br />
+        <ComputeForm
+          nillionClient={client}
+          programId={programId}
+          additionalComputeValues={additionalComputeValues}
+          storeIds={[voteStartCount, ...Object.values(votes)]}
+          inputParties={[
+            { partyName: "Official", partyId },
+            ...Array.from({length: 8}, (_, i) => ({ partyName: `Voter${i}`, partyId }))
+          ]}
+          outputParties={[{ partyName: partyName, partyId }]}
+          outputName={outputName}
+          onComputeProgram={(result) => setComputeResult(result.value)}
+        />
+      )}
+
+      {Object.values(results).every(v => v !== null) && (
+        <div>
+          <h2>Voting Results: {computeResult}</h2>
+          <ul>
+            {Object.entries(results).map(([candidate, votes]) => (
+              <li key={candidate}>{candidate}: {votes} votes</li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }

@@ -23,11 +23,15 @@ interface SecretFormProps {
   isLoading?: boolean;
   secretType: SecretDataType;
   customSecretName?: boolean;
+  startCount?: number;
+  isVoter?: boolean;
   hidePermissions?: boolean;
   itemName?: string;
   defaultUserWithComputePermissions?: string;
   defaultProgramIdForComputePermissions?: string;
 }
+
+const Leader =["Narendra Modi", "Rahul Gandhi", "Mamta Bannerjee"];
 
 const SecretForm: React.FC<SecretFormProps> = ({
   onNewStoredSecret,
@@ -37,6 +41,8 @@ const SecretForm: React.FC<SecretFormProps> = ({
   isLoading = false,
   customSecretName = false,
   secretType,
+  startCount,
+  isVoter,
   hidePermissions = false,
   itemName = 'secret',
   defaultUserWithComputePermissions = '',
@@ -181,6 +187,20 @@ const SecretForm: React.FC<SecretFormProps> = ({
     }
   };
 
+  if(startCount){
+    setSecret("0");
+  }
+
+  const handleVote = (leader)=>{
+    if(leader === "Narendra Modi"){
+        setSecret("1");
+    } else if(leader === "Rahul Gandhi"){
+        setSecret("2");
+    } else if(leader === "Mamta Bannerjee"){
+        setSecret("3");
+    }
+  }
+
   return isLoading ? (
     'Storing secret...'
   ) : (
@@ -199,17 +219,27 @@ const SecretForm: React.FC<SecretFormProps> = ({
           margin="normal"
         />
       )}
-      <TextField
-        label={`Set ${itemName} value`}
-        type={secretType === 'SecretBlob' ? 'text' : 'number'}
-        value={secret}
-        onChange={(e) => setSecret(e.target.value)}
-        required
-        disabled={isDisabled}
-        fullWidth
-        variant="outlined"
-        margin="normal"
-      />
+
+      {isVoter && (
+        <div className='flex gap-x-4'>
+          {Leader.map((leader, index) => (
+              <button key={index} className='px-4 py-2 bg-blue-500 text-white rounded shadow-md' onClick={()=>handleVote(leader)}>{leader}</button>
+          ))}
+        </div>
+      )}
+
+         
+        <TextField
+          label={`Set ${itemName} value`}
+          type={secretType === 'SecretBlob' ? 'text' : 'number'}
+          value={startCount ? "0" : secret}
+          onChange={(e) => setSecret(e.target.value)}
+          required
+          disabled={startCount ? true : isDisabled}
+          fullWidth
+          variant="outlined"
+          margin="normal"
+        />
 
       {!hidePermissions && (
         <TextField
